@@ -1,0 +1,45 @@
+1. ITicket.sol contains two structs, AccountDetails and Account.  This interface also imports the library TwabLib.sol, which contains structs by the same name.  Ticket.sol uses the two structs from TwabLib, so the ITicket structs are never used.  Is there any purpose for having those two structs defined in ITicket if the implementing contract does not use them?
+
+
+2. PrizePool.sol  Is the instance of _ticket created to save gas.  It is cheaper to make an instance and then read twice from it since it is now in memory as opposed to reading twice from storage.
+    function _depositTo(address _operator, address _to, uint256 _amount) internal
+    {
+        require(_canDeposit(_to, _amount), "PrizePool/exceeds-balance-cap");
+
+        ITicket _ticket = ticket;
+
+        _token().safeTransferFrom(_operator, address(this), _amount);
+
+        _mint(_to, _amount, _ticket);
+        _supply(_amount);
+
+        emit Deposited(_operator, _to, _ticket, _amount);
+    }
+
+
+3. PrizePool.sol Where does the token get set in this contract?  I can't find where _token() has a way to have the token value set.
+    function _depositTo(address _operator, address _to, uint256 _amount) internal
+    {
+        require(_canDeposit(_to, _amount), "PrizePool/exceeds-balance-cap");
+
+        ITicket _ticket = ticket;
+
+        _token().safeTransferFrom(_operator, address(this), _amount);
+
+        _mint(_to, _amount, _ticket);
+        _supply(_amount);
+
+        emit Deposited(_operator, _to, _ticket, _amount);
+    }
+
+
+4. YieldSourcePrizePool.sol.  Why is a re-entancy guard needed?
+    function sweep() external nonReentrant onlyOwner {
+        uint256 balance = _token().balanceOf(address(this));
+        _supply(balance);
+
+        emit Swept(balance);
+    }
+
+
+

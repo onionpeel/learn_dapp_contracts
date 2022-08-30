@@ -1,0 +1,98 @@
+1. An interface contains a function signature for a public variable in an implementation contract.
+Observation: This is a way to enforce state variables in implementation contracts since those contracts must implement all function signatures from an interface.
+
+interface IControlledToken is IERC20 {
+    function controller() external view returns (address);
+
+contract ControlledToken is ERC20Permit, IControlledToken {
+    address public override immutable controller;
+
+
+2. Emit an event from the constructor that contains the values that were sent as inputs and set in during contract creation.
+Observation: Values are set during creation.  These values are retrievable by calling to an offchain database instead of calling to the chain.
+
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint8 decimals_,
+        address _controller
+    ) ERC20Permit("PoolTogether ControlledToken") ERC20(_name, _symbol) {
+        ....
+        emit Deployed(_name, _symbol, decimals_, _controller);
+    }
+
+
+3. A struct can be defined as a type in an interface or library.  Then the implementing contract can create a variable of that struct.  Since the interface is inherited by a contract, the struct can be called directly by name.  But a library is imported, so it has to be referenced by <LibraryName>.<structName>.
+
+
+4. Define a fixed length array of structs within a struct:
+    struct Account {
+        ....
+        ObservationLib.Observation[MAX_CARDINALITY] twabs;
+    }
+
+
+5. When overriding a function from an inherited contract, include a comment that indicates the base contract on which the overridden function exists.
+    /// @inheritdoc ITicket
+
+
+6. An event parameter can be of a struct type.
+    event NewUserTwab(
+        address indexed delegate,
+        ObservationLib.Observation newTwab
+    );
+
+
+7. An event parameter can be an array.
+    event AwardedExternalERC721(address indexed winner, address indexed token, uint256[] tokenIds);
+
+
+8. Arguments can be used for modifiers.
+    modifier canAddLiquidity(uint256 _amount) {
+        require(_canAddLiquidity(_amount), "PrizePool/exceeds-liquidity-cap");
+        _;
+    }
+
+
+9. When reading a variable from state, if it will be used more than once, create a variable in memory since it is cheaper.
+    function _depositTo(address _operator, address _to, uint256 _amount) internal
+    {
+        require(_canDeposit(_to, _amount), "PrizePool/exceeds-balance-cap");
+
+        ITicket _ticket = ticket;
+
+        _token().safeTransferFrom(_operator, address(this), _amount);
+
+        _mint(_to, _amount, _ticket);
+        _supply(_amount);
+
+        emit Deposited(_operator, _to, _ticket, _amount);
+    }
+
+
+10. staticcall.  Make a call to a function that will not change the state of the chain.  Thus, that function is either view or pure.  
+Use: This provides some security for the calling contract because it prevents re-entrancy attacks (which would modify state).
+Note: the parameter for staticcall() is of bytes type.
+        (bool succeeded, bytes memory data) = address(_yieldSource).staticcall(
+            abi.encodePacked(_yieldSource.depositToken.selector)
+        );
+        address resultingAddress;
+        if (data.length > 0) {
+            resultingAddress = abi.decode(data, (address));
+        }
+
+
+11. Modifiers can use an underscore to control when a function's statement body is executed.
+    modifier nonReentrant() {
+        _nonReentrantBefore();
+        _;
+        _nonReentrantAfter();
+    }
+
+
+12. continue.  Used in control structures.  It stops execution within a statement block and starts the next iteration of a loop.
+                } else {
+                    continue;
+                }
+
+
